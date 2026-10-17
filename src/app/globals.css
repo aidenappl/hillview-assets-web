@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+/* Palette from the Angular kiosk (hillviewAssets global.scss). */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --color-brand: #3067f6;
+  --color-ink: #161c28;
+  --color-ink-soft: #36435d;
+  --color-muted: #7d889d;
+  --color-line: #f3f4f6;
+  --color-line-strong: #e4e7eb;
+  --color-focus: #95b6f7;
+  --color-placeholder: #b4bac3;
+  --color-danger: #f64954;
+  --color-caution: #f69449;
+  --color-dark: #34363d;
+}
+
+html,
+body {
+  min-height: 100vh;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--color-ink);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0;
+}
+
+/* The ring spinner the Angular buttons showed while busy. */
+.loader {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 3.3px solid rgba(255, 255, 255, 0.2);
+  border-left-color: #ffffff;
+  animation: loader-spin 1.1s infinite linear;
+}
+
+@keyframes loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

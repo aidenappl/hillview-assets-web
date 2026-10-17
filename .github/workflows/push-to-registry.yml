@@ -1,0 +1,135 @@
+name: Build and Push to Appleby Cloud Registry
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: hillview-assets-web
+
+jobs:
+  build-and-push:
+    runs-on: [self-hosted, lattice-worker]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # Registry credentials (REGISTRY_URL / REGISTRY_USERNAME / REGISTRY_PASSWORD)
+      # come from Keyring token "hillview-web-ci", granted only those three.
+      - name: Inject Keyring secrets
+        uses: aidenappl/keyring-actions@v1
+        with:
+          url: ${{ secrets.KEYRING_URL }}
+          access-key-id: ${{ secrets.KEYRING_ACCESS_KEY_ID }}
+          secret-access-key: ${{ secrets.KEYRING_SECRET_ACCESS_KEY }}
+
+      # The host's shared BuildKit, not docker/setup-buildx-action: that races
+      # with other runners on the shared Docker daemon. Its local layer cache
+      # persists between builds, so there is no gha cache.
+      - name: Use lattice-builder
+        run: |
+          docker buildx inspect lattice-builder >/dev/null 2>&1 \
+            || docker buildx create --name lattice-builder --driver remote tcp://127.0.0.1:1234
+          docker buildx inspect lattice-builder
+
+      # Network retries: registry.appleby.cloud and Lattice sit on-prem behind
+      # Cloudflare on one WAN, and ~5% of requests time out or 522. Every call
+      # to them below makes 5 attempts (5s, 10s, 20s, 40s apart) and fails at
+      # once on an auth/4xx answer.
+      - name: Log in to Appleby Cloud Registry
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$REGISTRY_PASSWORD" | docker login "$REGISTRY_URL" \
+                -u "$REGISTRY_USERNAME" --password-stdin > login.log 2>&1; then
+              cat login.log
+              exit 0
+            fi
+            cat login.log
+            if grep -qiE 'unauthorized|incorrect username|denied|forbidden' login.log; then
+              echo "::error title=Registry login refused::credentials rejected - not retrying"
+              exit 1
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((5 * 2 ** (attempt - 1)))
+              echo "::warning title=Registry login retry::attempt $attempt/5 failed; retrying in ${delay}s"
+              sleep "$delay"
+            fi
+          done
+          echo "::error title=Registry unreachable::docker login failed after 5 attempts"
+          exit 1
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          builder: lattice-builder
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          provenance: false
+          tags: ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:latest
+
+      # shell: bash (not the implicit `bash -e`) so pipefail is on and a failed
+      # `docker push` is not masked by `tee`'s exit status.
+      - name: Push image
+        shell: bash
+        run: |
+          tag="$REGISTRY_URL/$IMAGE_NAME:latest"
+          for attempt in 1 2 3 4 5; do
+            if docker push "$tag" 2>&1 | tee push.log; then
+              exit 0
+            fi
+            if grep -qiE 'unauthorized|denied|forbidden|name unknown|manifest invalid' push.log; then
+              echo "::error title=Registry refused the push::$tag - not retrying"
+              exit 1
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((5 * 2 ** (attempt - 1)))
+              echo "::warning title=Registry push retry::$tag attempt $attempt/5 failed; retrying in ${delay}s"
+              sleep "$delay"
+            fi
+          done
+          echo "::error title=Registry unreachable::push of $tag failed after 5 attempts"
+          exit 1
+
+      - name: Deploy to Lattice
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ secrets.LATTICE_DEPLOY_URL }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "::error title=No deploy credential::LATTICE_DEPLOY_URL is not set."
+            exit 1
+          fi
+          # Retried: curl failure and 408/429/502/503/504/520-524. Any other
+          # non-2xx (400 "worker is not connected", 401/403/404, 500) fails at once.
+          for attempt in 1 2 3 4 5; do
+            rm -f response.json
+            HTTP=$(curl -sS -X POST "$DEPLOY_URL?container=$IMAGE_NAME&commit=$SHA" \
+              --max-time 30 -o response.json -w '%{http_code}') && RC=0 || RC=$?
+            if [ "$RC" -eq 0 ] && [ "$HTTP" -ge 200 ] && [ "$HTTP" -lt 300 ]; then
+              echo "HTTP $HTTP — container redeployed"
+              exit 0
+            fi
+            case "$RC:$HTTP" in
+              0:408|0:429|0:502|0:503|0:504|0:52[0-4]) RETRY=1; WHY="HTTP $HTTP" ;;
+              0:*) RETRY=0; WHY="HTTP $HTTP" ;;
+              *) RETRY=1; WHY="curl exit $RC" ;;
+            esac
+            if [ "$RETRY" -eq 0 ]; then
+              cat response.json 2>/dev/null || true; echo
+              echo "::error title=Lattice refused the redeploy::$WHY"
+              exit 1
+            fi
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error title=Lattice unreachable::$WHY after 5 attempts"
+              exit 1
+            fi
+            delay=$((5 * 2 ** (attempt - 1)))
+            echo "::warning title=Lattice redeploy retry::attempt $attempt/5 failed ($WHY); retrying in ${delay}s"
+            sleep "$delay"
+          done
