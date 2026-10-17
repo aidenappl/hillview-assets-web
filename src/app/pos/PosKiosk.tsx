@@ -283,7 +283,11 @@ export default function PosKiosk() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === "Backslash" && !e.ctrlKey && !e.metaKey) {
+      if (
+        (e.code === "Backslash" || e.key === "\\") &&
+        !e.ctrlKey &&
+        !e.metaKey
+      ) {
         e.preventDefault();
         back();
       } else if (e.ctrlKey && e.key.toLowerCase() === "s") {
