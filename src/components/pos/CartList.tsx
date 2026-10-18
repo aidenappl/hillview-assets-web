@@ -1,4 +1,5 @@
 import Spinner from "@/components/Spinner";
+import RemoteImage from "@/components/RemoteImage";
 import { ASSET_STATUS_OK, type Asset } from "@/types";
 
 export type CartItem = Asset & { checkingIn?: boolean };
@@ -20,11 +21,11 @@ export default function CartList({
   onView,
 }: CartListProps) {
   return (
-    <div className="mt-10 max-h-[32vh] w-full overflow-y-auto rounded-md border-2 border-line p-5 shadow-[0_0_10px_0_#00000008]">
-      <h2 className="pb-[10px] text-[23px] font-semibold text-ink-soft">
+    <div className="glass-subtle max-h-[36vh] w-full overflow-y-auto rounded-2xl p-3">
+      <h2 className="px-2 pt-1 pb-2 text-sm font-semibold text-ink-soft">
         Your Cart
       </h2>
-      <ul className="flex flex-col gap-5">
+      <ul className="flex flex-col gap-1">
         {items.map((item) => {
           // The Angular kiosk compared active_tab.user.identifier, a field the
           // API never sends, so "Pending Check In" could never appear.
@@ -32,20 +33,20 @@ export default function CartList({
           const warned =
             item.status !== null && item.status.id !== ASSET_STATUS_OK;
           return (
-            <li key={item.id} className="flex h-[50px] items-center gap-5">
-              <div
-                className="size-[50px] shrink-0 rounded-[5px] bg-[#bec1e53d] bg-cover bg-center"
-                style={
-                  item.image_url
-                    ? { backgroundImage: `url("${item.image_url}")` }
-                    : undefined
-                }
-                aria-hidden
+            <li
+              key={item.id}
+              className="flex animate-[notice-in_380ms_var(--ease-spring)] items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-white/60"
+            >
+              <RemoteImage
+                src={item.image_url}
+                alt={item.name ?? "Asset"}
+                className="size-11 rounded-xl ring-1 ring-[#e6e9f0]"
+                sizes="44px"
               />
               <div className="min-w-0 flex-1">
-                <h3 className="truncate font-bold">{item.name}</h3>
+                <h3 className="truncate text-sm font-semibold">{item.name}</h3>
                 {warned ? (
-                  <p className="font-semibold text-caution">
+                  <p className="text-xs font-semibold text-caution">
                     {item.status?.name}
                     <LinkButton onClick={() => onView(item)}>
                       View Alert
@@ -60,7 +61,7 @@ export default function CartList({
                   type="button"
                   disabled={item.checkingIn}
                   onClick={() => onCheckin(item)}
-                  className="flex h-10 w-[130px] shrink-0 cursor-pointer items-center justify-center rounded-[3px] bg-[#2f67f5] text-white"
+                  className="flex h-9 w-28 shrink-0 cursor-pointer items-center justify-center rounded-full bg-brand text-sm font-semibold text-white shadow-[0_6px_16px_-6px_rgba(48,103,246,0.6)] transition-transform duration-200 ease-spring active:scale-95"
                 >
                   {item.checkingIn ? (
                     <Spinner className="size-5!" />
@@ -73,7 +74,7 @@ export default function CartList({
                   type="button"
                   aria-label={`Remove ${item.name ?? "asset"}`}
                   onClick={() => onRemove(item.id)}
-                  className="size-[27px] shrink-0 cursor-pointer"
+                  className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-white/80 hover:text-ink-soft [&>svg]:size-4"
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -107,11 +108,14 @@ function ItemStatus({
   own: boolean;
   onView: (item: CartItem) => void;
 }) {
-  if (!item.active_tab) return <p>Available</p>;
+  if (!item.active_tab)
+    return <p className="text-xs font-medium text-[#17733f]">Available</p>;
   if (own)
-    return <p className="font-semibold text-caution">Pending Check In</p>;
+    return (
+      <p className="text-xs font-semibold text-caution">Pending Check In</p>
+    );
   return (
-    <p className="font-semibold text-danger">
+    <p className="text-xs font-semibold text-danger">
       Unavailable
       <LinkButton onClick={() => onView(item)}>View Info</LinkButton>
     </p>
@@ -129,7 +133,7 @@ function LinkButton({
     <button
       type="button"
       onClick={onClick}
-      className="ml-[10px] cursor-pointer text-[15px] font-medium text-[#7a7f89] hover:underline"
+      className="ml-2 cursor-pointer text-xs font-medium text-[#7a7f89] hover:underline"
     >
       {children}
     </button>

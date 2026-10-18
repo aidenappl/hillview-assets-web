@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import Button from "@/components/Button";
+import { useAlert } from "@/components/AlertProvider";
 import Field, { inputClass } from "@/components/Field";
-import AssetCard from "@/components/AssetCard";
+import AssetCard, { AssetCardSkeleton } from "@/components/AssetCard";
 import StatusPill from "@/components/StatusPill";
 import {
   reqCheckin,
@@ -23,6 +24,7 @@ const formatTime = (iso: string | null, fallback: string) =>
  */
 export default function Seeker() {
   const router = useRouter();
+  const alerts = useAlert();
   const inputRef = useRef<HTMLInputElement>(null);
   const [tag, setTag] = useState("");
   const [asset, setAsset] = useState<Asset | null>(null);
@@ -41,7 +43,7 @@ export default function Seeker() {
     setLooking(false);
     setTag("");
     if (!assetRes.success) {
-      window.alert(assetRes.error_message);
+      alerts.show("error", assetRes.error_message);
       return;
     }
     setAsset(assetRes.data);
@@ -54,14 +56,14 @@ export default function Seeker() {
     const res = await reqCheckin({ asset_id: asset.id, source: "seeker" });
     setCheckingIn(false);
     if (!res.success) {
-      window.alert(res.error_message);
+      alerts.show("error", res.error_message);
       return;
     }
-    window.alert("successfully checked in");
+    alerts.show("success", `${asset.name ?? "Asset"} checked in.`);
     setAsset(null);
     setHistory([]);
     inputRef.current?.focus();
-  }, [asset, checkingIn]);
+  }, [asset, checkingIn, alerts]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -92,13 +94,13 @@ export default function Seeker() {
       <button
         type="button"
         onClick={() => router.push("/pos")}
-        className="mt-5 ml-5 h-10 w-[150px] cursor-pointer rounded-md border border-[#e5e6eb] bg-[#f7f8fb] font-medium text-[#676876]"
+        className="glass-subtle mt-5 ml-5 h-10 cursor-pointer rounded-full px-4 text-sm font-semibold text-ink-soft transition-colors hover:bg-white/80"
       >
-        Navigate to POS
+        ← Back to POS
       </button>
 
       <div className="mx-auto flex w-[min(650px,92vw)] flex-col items-center">
-        <div className="flex w-[min(550px,90vw)] flex-col gap-[30px] py-[70px]">
+        <div className="glass mt-6 mb-8 flex w-[min(560px,92vw)] flex-col gap-5 rounded-[28px] p-6 sm:p-8">
           <Field label="Asset ID" htmlFor="assetID">
             <input
               ref={inputRef}
@@ -124,7 +126,9 @@ export default function Seeker() {
           </Button>
         </div>
 
-        {asset && (
+        {looking && <AssetCardSkeleton />}
+
+        {asset && !looking && (
           <>
             <AssetCard
               asset={asset}
@@ -138,7 +142,7 @@ export default function Seeker() {
               }
             />
             {asset.active_tab && (
-              <div className="mt-[30px] w-[min(550px,90vw)]">
+              <div className="mt-5 w-[min(560px,92vw)]">
                 <Button loading={checkingIn} onClick={() => void checkin()}>
                   Check In
                 </Button>
@@ -147,17 +151,14 @@ export default function Seeker() {
           </>
         )}
 
-        {asset && history.length > 0 && (
+        {asset && !looking && history.length > 0 && (
           <section className="w-full">
-            <h2 className="my-5 text-center text-2xl font-bold">
+            <h2 className="mt-10 mb-4 pl-1 text-lg font-bold text-ink-soft">
               Recent History
             </h2>
-            <ul className="flex flex-col gap-3">
+            <ul className="flex flex-col gap-2.5">
               {history.map((h) => (
-                <li
-                  key={h.id}
-                  className="rounded-[15px] border-2 border-line px-5 py-4"
-                >
+                <li key={h.id} className="glass-subtle rounded-2xl px-5 py-3.5">
                   <h3 className="font-bold">
                     {h.user?.name ?? "Unknown student"}
                   </h3>

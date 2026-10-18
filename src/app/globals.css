@@ -2,6 +2,7 @@
 
 /* Palette from the Angular kiosk (hillviewAssets global.scss). */
 @theme inline {
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
   --font-sans: var(--font-inter), system-ui, sans-serif;
   --color-brand: #3067f6;
   --color-ink: #161c28;
@@ -23,18 +24,73 @@ body {
 
 body {
   margin: 0;
-  background: #ffffff;
   color: var(--color-ink);
+  background:
+    radial-gradient(
+      60vw 50vw at 8% -10%,
+      rgba(48, 103, 246, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      50vw 45vw at 100% 10%,
+      rgba(6, 227, 145, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      55vw 50vw at 60% 110%,
+      rgba(140, 120, 255, 0.12),
+      transparent 60%
+    ),
+    #f5f7fb;
+  background-attachment: fixed;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p {
-  margin: 0;
+/* Frosted panel: the kiosk's "Apple glass" surface. */
+.glass {
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 20px 50px -20px rgba(30, 41, 80, 0.25),
+    0 2px 6px rgba(30, 41, 80, 0.05);
+}
+
+.glass-subtle {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+/* In a layer, so Tailwind's margin utilities on headings still apply. */
+@layer base {
+  /* Tailwind v4 dropped the pointer cursor on buttons; every clickable thing
+     on the kiosk gets one, and disabled controls get the default back. */
+  button,
+  [role="button"],
+  [role="radio"],
+  [role="option"],
+  a[href],
+  summary,
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: default;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p {
+    margin: 0;
+  }
 }
 
 /* The ring spinner the Angular buttons showed while busy. */
@@ -51,4 +107,48 @@ p {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Loading placeholder for images and cards. */
+.skeleton {
+  background: linear-gradient(100deg, #eef0f5 30%, #f8f9fc 50%, #eef0f5 70%);
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* Kiosk: no visible scrollbars anywhere (scrolling still works). */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
 }

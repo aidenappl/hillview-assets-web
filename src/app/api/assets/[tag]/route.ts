@@ -24,7 +24,11 @@ export async function GET(
       kind: "asset",
       tag,
     });
-    return fail(404, "not_found", "Asset not found");
+    return fail(
+      404,
+      "not_found",
+      "No item has that tag. Check the label and scan again.",
+    );
   }
   return ok(res.body as Asset);
 }

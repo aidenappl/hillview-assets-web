@@ -39,7 +39,7 @@ export default function LocationSelect({
     <div
       role="radiogroup"
       aria-label="Where will the equipment be?"
-      className="flex justify-between gap-4"
+      className="flex gap-3"
     >
       {OPTIONS.map((o) => {
         const active = value === o.value;
@@ -50,10 +50,32 @@ export default function LocationSelect({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(o.value)}
-            className={`flex aspect-square w-[min(240px,43vw)] cursor-pointer flex-col justify-between rounded-[15px] border-2 p-[clamp(16px,3vw,35px)] text-left transition-colors select-none ${
-              active ? "border-brand" : "border-[#f0f2f8]"
+            className={`relative flex flex-1 cursor-pointer flex-col gap-6 rounded-2xl border p-5 text-left transition-all duration-300 ease-spring select-none active:scale-[0.98] ${
+              active
+                ? "-translate-y-0.5 border-brand/50 bg-white shadow-[0_0_0_4px_rgba(48,103,246,0.12),0_10px_30px_-12px_rgba(48,103,246,0.4)]"
+                : "border-white/70 bg-white/45 hover:bg-white/70"
             }`}
           >
+            <span
+              aria-hidden
+              className={`absolute top-4 right-4 flex size-5 items-center justify-center rounded-full border-2 transition-all duration-300 ease-spring ${
+                active
+                  ? "scale-100 border-brand bg-brand"
+                  : "scale-90 border-[#cfd5e1] bg-white"
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth={3.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`size-3 transition-transform duration-300 ease-spring ${active ? "scale-100" : "scale-0"}`}
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </span>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -61,15 +83,15 @@ export default function LocationSelect({
               strokeWidth={2}
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`size-[35px] transition-colors ${active ? "stroke-brand" : "stroke-[#354259]"}`}
+              className={`size-7 transition-[transform,stroke] duration-300 ease-spring ${active ? "scale-110 stroke-brand" : "stroke-[#354259]"}`}
             >
               {o.icon}
             </svg>
             <span>
-              <span className="block pb-[13px] text-xl font-bold text-[#2b3545]">
+              <span className="block pb-1 text-base font-bold text-[#2b3545]">
                 {o.title}
               </span>
-              <span className="block text-base tracking-[0.5px] text-muted">
+              <span className="block text-sm leading-snug text-muted">
                 {o.body}
               </span>
             </span>

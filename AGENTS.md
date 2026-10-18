@@ -32,8 +32,8 @@ hillview-assets-web/
     api/assets/[tag]/history   # GET last 10 checkouts        → assets read/assetCheckoutHistory
     api/checkout               # POST a whole cart; per-asset results → assets /checkout ×N
     api/checkin                # POST {asset_id, source: pos|seeker}  → assets /checkin
-  src/components/              # Button, Field, AssetCard, StatusPill, NotesOverlay, Spinner
-  src/components/pos/          # StepIndicator, StepPanel, CartList, LocationSelect
+  src/components/              # Button, Field, AssetCard (+ skeleton), StatusPill, NotesOverlay, Spinner, RemoteImage, Notice, AlertProvider (useAlert)
+  src/components/pos/          # StepCarousel, StepPanel, StepIndicator, StudentResults, StudentChip, CartList, LocationSelect, QuickDates
   src/lib/upstream.ts          # server-side client for api.hillview.tv; one Monitor event per call
   src/lib/respond.ts           # standard {success,data}/{success:false,error…} envelope, tag sanitising
   src/lib/monitor-*.ts         # shared with the sibling Hillview web repos — keep in step
@@ -69,8 +69,11 @@ There are no `NEXT_PUBLIC_*` variables: the browser only ever calls its own orig
 - Routes answer with `ok()` / `fail()` from `lib/respond.ts`; user-facing text goes in `error_message`. Sanitise scanned values with `cleanTag()`.
 - Data fetching is imperative (`useState` + `req*` calls); no SWR/React Query, no Redux (the kiosk's state lives in `PosKiosk.tsx`).
 - The kiosk is keyboard- and scanner-driven: keep autofocus moving with the step, and keep the shortcuts working (POS: `\` back a step, Ctrl+S → seeker; seeker: `c` check in, `b` → POS).
-- `window.alert`/`confirm` are deliberate — they are the Angular kiosk's UX and work with a scanner gun. Keep the message texts.
-- Components are hand-built Tailwind; colours are the `@theme` tokens in `globals.css` (`brand`, `ink`, `muted`, `line`, …).
+- **Never use `window.alert`/`confirm`.** Show messages with `useAlert().show(tone, text, action?)` (`components/AlertProvider.tsx`, mounted in the root layout): non-blocking frosted toasts, so a scanner's Enter can't dismiss something unread. A confirmation is an alert with an `action` (e.g. "Continue anyway"); those stay until used. Call `alerts.clear()` when the kiosk changes step.
+- **Look:** "glass" — soft colour-wash `body` background, `.glass` / `.glass-subtle` frosted panels (in `globals.css`), solid white inputs with visible borders (`inputClass`), gradient primary / outlined secondary `Button`. Colours are the `@theme` tokens (`brand`, `ink`, `muted`, `line`, …). Components are hand-built Tailwind.
+- **Images:** always `RemoteImage` — shimmer skeleton until loaded, icon on failure, `unoptimized` so images load from the CDN, never through this server. Product shots use `fit="contain"` (default; white photo backgrounds are blended in), people use `fit="cover"`.
+- **Steps:** `StepCarousel` slides one track a full width per step and eases its height to the active `StepPanel`. Don't reintroduce absolutely-positioned/stacked step panels — that caused the jump between steps. Focus inputs with `{ preventScroll: true }`, after the slide.
+- **CSS reset is in `@layer base`** so Tailwind utilities (margins on headings) win; unlayered CSS in `globals.css` beats every utility. Buttons, links and radios get `cursor: pointer` from a base rule. Scrollbars are hidden kiosk-wide.
 
 ## 6. Domain & architecture
 
@@ -82,6 +85,12 @@ There are no `NEXT_PUBLIC_*` variables: the browser only ever calls its own orig
 - An asset already checked out to *this* student (`active_tab.associated_user === student.id`) shows **Check In** in the cart, so a student can return gear at the kiosk. Checked out to anyone else = "Unavailable" and blocks checkout.
 - Off-campus return dates are sent as **local midnight in the kiosk's timezone**. On-campus checkouts send no return date (the API stores its zero time), as the Angular kiosk did.
 - Seeker check-ins carry the note `checked in by admin`.
+
+### Kiosk UX
+
+- Student type-ahead: photo, bolded match, card ID; deactivated students are filtered out server-side; clicking a name goes straight to step 2.
+- From step 2 a "Name · Not you?" chip shows who is signed in; step 3 summarises the cart and offers Tomorrow / Friday / 1 week return dates.
+- The done screen restarts itself after 15 seconds.
 
 ### Fixed vs. the Angular kiosk
 
@@ -105,7 +114,7 @@ Service **`hillview-assets-web`**, zone **`hillview`** (Lattice stack 37). Serve
 | `assets.checkin` / `assets.checkin.failed`    | info / error | a check-in; `source` is `pos` (student) or `seeker` (admin)                                                 |
 | `assets.lookup.not_found`                     | warn  | a scanned tag matched nothing (`kind`: asset with `tag`, or user without) — at most once a minute per tag          |
 | `assets.cart.warning_scanned`                 | info  | (browser) a warning-status asset was scanned                                                                       |
-| `assets.cart.warning_override`                | info  | (browser) the student confirmed past the warning prompt                                                            |
+| `assets.cart.warning_override`                | info  | (browser) the student pressed "Continue anyway" on the warning alert                                               |
 | `server.request.error`                        | error | a server render / API route threw (`instrumentation.ts`)                                                           |
 | `client.error.boundary / client.error.global` | error | a render error reached an error boundary                                                                           |
 | `assets.pos.unhandled`, uncaught errors       | error | browser-side failures                                                                                              |
@@ -150,3 +159,13 @@ There is no PR CI here: run these yourself. For UI changes, tophat `/pos` and `/
 ## 11. Keeping this file updated
 
 Any change to structure, stack, commands, conventions, routes, env vars, events or deployment updates this file (and `README.md` where setup or role changed) in the same change.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

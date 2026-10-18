@@ -58,6 +58,7 @@ export type MobileUser = {
   email: string;
   nfc_identifier: string;
   profile_image_url: string;
+  status?: GeneralNSN;
 };
 
 export type CheckoutRequest = {

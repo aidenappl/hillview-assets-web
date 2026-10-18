@@ -10,7 +10,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim().slice(0, 64);
   if (q === "") return ok<MobileUser[]>([]);
 
-  const params = new URLSearchParams({ limit: "7", offset: "0", search: q });
+  const params = new URLSearchParams({ limit: "20", offset: "0", search: q });
   const res = await upstream(
     "list/mobileUsers",
     `${CORE_API}/list/mobileUsers?${params}`,
@@ -18,5 +18,8 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (res.status !== 200)
     return fail(502, "upstream_error", "Couldn't search students.");
   const users = Array.isArray(res.body) ? (res.body as MobileUser[]) : [];
-  return ok(users.slice(0, 5));
+  // Deactivated students can't check anything out, so don't offer them.
+  return ok(
+    users.filter((u) => u.status?.short_name !== "deactivated").slice(0, 5),
+  );
 }

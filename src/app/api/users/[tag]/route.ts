@@ -22,7 +22,7 @@ export async function GET(
   if (res.body === null) {
     // Never the ID itself: it identifies a student.
     reportServerWarning("assets.lookup.not_found", "user", { kind: "user" });
-    return fail(404, "not_found", "invalid studentID");
+    return fail(404, "not_found", "We couldn't find that student ID.");
   }
   return ok(res.body as AssetUser);
 }
